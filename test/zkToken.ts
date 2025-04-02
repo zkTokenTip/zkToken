@@ -34,7 +34,7 @@ describe("zkToken", function () {
     const zkToken = await hre.ethers.deployContract("zkToken", [
       await transferVerifier.getAddress(),
       await registrationVerifier.getAddress(),
-      await registrationVerifier.getAddress(),
+      await mintVerifier.getAddress(),
     ]);
 
     return {
@@ -91,7 +91,11 @@ describe("zkToken", function () {
         deployFixture
       );
 
-      const { proof, publicSignals } = await createTransferProof(keysA, keysB);
+      const { proof, publicSignals } = await createTransferProof(
+        keysA,
+        keysB,
+        keysA.publicKey.encrypt(100n)
+      );
 
       const flag = await transferVerifier.verifyProof(
         [proof.pi_a[0], proof.pi_a[1]],
@@ -139,7 +143,11 @@ describe("zkToken", function () {
     it("Create Transfer Proof", async function () {
       const { keysA, keysB } = await loadFixture(deployFixture);
 
-      const { proof, publicSignals } = await createTransferProof(keysA, keysB);
+      const { proof, publicSignals } = await createTransferProof(
+        keysA,
+        keysB,
+        keysA.publicKey.encrypt(100n)
+      );
 
       const vKey = JSON.parse(
         fs.readFileSync("test/transfer/verification_key.json")
@@ -165,13 +173,22 @@ describe("zkToken", function () {
       await registration(keysA, zkToken, userA);
     });
 
-    it.skip("Transfer in zkToken", async function () {
+    it("Mint in zkToken", async function () {
+      const { keysA, zkToken, userA } = await loadFixture(deployFixture);
+
+      await registration(keysA, zkToken, userA);
+      await mint(keysA, zkToken, userA);
+    });
+
+    it("Transfer in zkToken", async function () {
       const { keysA, keysB, zkToken, userA, userB } = await loadFixture(
         deployFixture
       );
 
       await registration(keysA, zkToken, userA);
       await registration(keysB, zkToken, userB);
+
+      await mint(keysA, zkToken, userA);
 
       await transfer(keysA, keysB, zkToken, userA, userB);
     });

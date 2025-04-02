@@ -9,9 +9,9 @@ contract zkToken {
     string public symbol = "ZKT";
     uint256 public decimals = 0;
 
-    ITransferVerifier private transferVerifierAddr;
-    IRegistrationVerifier private registrationVerifierAddr;
-    IMintVerifier private mintVerifierAddr;
+    ITransferVerifier private transferVerifier;
+    IRegistrationVerifier private registrationVerifier;
+    IMintVerifier private mintVerifier;
 
     struct Key {
         uint256 g;
@@ -34,15 +34,13 @@ contract zkToken {
 
     /* name, symbol, decimals */
     constructor(
-        address _transferVerifieqAddr,
+        address _transferVerifierAddr,
         address _registrationVerifierAddr,
         address _mintVerifierAddr
     ) {
-        transferVerifierAddr = ITransferVerifier(_transferVerifieqAddr);
-        registrationVerifierAddr = IRegistrationVerifier(
-            _registrationVerifierAddr
-        );
-        mintVerifierAddr = IMintVerifier(_mintVerifierAddr);
+        transferVerifier = ITransferVerifier(_transferVerifierAddr);
+        registrationVerifier = IRegistrationVerifier(_registrationVerifierAddr);
+        mintVerifier = IMintVerifier(_mintVerifierAddr);
     }
 
     /// @notice Getting a user's balance
@@ -67,7 +65,7 @@ contract zkToken {
         require(input[1] >= 0 && input[3] >= 0, "invalid key value");
         require(users[msg.sender].encryptedBalance == 0, "you are registered");
 
-        bool registrationProofIsCorrect = registrationVerifierAddr.verifyProof(
+        bool registrationProofIsCorrect = registrationVerifier.verifyProof(
             a,
             b,
             c,
@@ -92,7 +90,7 @@ contract zkToken {
         uint[2] calldata c,
         uint[1] calldata input
     ) external onlyRegistered(_to) zeroAddress(_to) {
-        bool mintProofIsCorrect = mintVerifierAddr.verifyProof(a, b, c, input);
+        bool mintProofIsCorrect = mintVerifier.verifyProof(a, b, c, input);
 
         User storage user = users[_to];
 
@@ -121,7 +119,7 @@ contract zkToken {
 
         input[0] = sender.encryptedBalance;
 
-        bool transferProofIsCorrect = transferVerifierAddr.verifyProof(
+        bool transferProofIsCorrect = transferVerifier.verifyProof(
             a,
             b,
             c,

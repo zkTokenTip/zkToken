@@ -5,6 +5,8 @@ const snarkjs = require("snarkjs");
 
 import { getRandomBigInt } from "../common";
 
+const transferValue = 50n;
+
 export async function transfer(
   keysA: paillierBigint.KeyPair,
   keysB: paillierBigint.KeyPair,
@@ -12,16 +14,20 @@ export async function transfer(
   userA: any,
   userB: any
 ) {
-  const encryptedBalanceABefor = await zkToken.balanceOf(userA);
-  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-    getTransferData(keysA, keysB, encryptedBalanceABefor),
-    "test/transfer/transfer.wasm",
-    "test/transfer/zkToken_transfer.zkey"
+  const encryptedBalanceABefor = await zkToken.balanceOf(userA.address);
+  const balanceABefore = keysA.privateKey.decrypt(encryptedBalanceABefor);
+  const encryptedBalanceBBefor = await zkToken.balanceOf(userB.address);
+  const balanceBBefore = keysB.privateKey.decrypt(encryptedBalanceBBefor);
+
+  const { proof, publicSignals } = await createTransferProof(
+    keysA,
+    keysB,
+    encryptedBalanceABefor
   );
 
   await expect(
     zkToken.connect(userA).transfer(
-      userB,
+      userB.address,
       [proof.pi_a[0], proof.pi_a[1]],
       [
         [proof.pi_b[0][1], proof.pi_b[0][0]],
@@ -34,23 +40,20 @@ export async function transfer(
 
   const encryptedBalanceA = await zkToken.balanceOf(userA.address);
   const balanceA = keysA.privateKey.decrypt(encryptedBalanceA);
-  expect(balanceA).to.be.eq(90n);
+  expect(balanceABefore - transferValue).to.be.eq(balanceA);
 
   const encryptedBalanceB = await zkToken.balanceOf(userB.address);
   const balanceB = keysB.privateKey.decrypt(encryptedBalanceB);
-  expect(balanceB).to.be.eq(110n);
+  expect(balanceBBefore + transferValue).to.be.eq(balanceB);
 }
 
 export async function createTransferProof(
   senderKeys: paillierBigint.KeyPair,
-  receiverKeys: paillierBigint.KeyPair
+  receiverKeys: paillierBigint.KeyPair,
+  encryptedSenderBalance: bigint
 ) {
   return await snarkjs.groth16.fullProve(
-    getTransferData(
-      senderKeys,
-      receiverKeys,
-      senderKeys.publicKey.encrypt(100n)
-    ),
+    getTransferData(senderKeys, receiverKeys, encryptedSenderBalance),
     "test/transfer/transfer.wasm",
     "test/transfer/transfer.zkey"
   );
@@ -61,7 +64,7 @@ export function getTransferData(
   receiverKeys: paillierBigint.KeyPair,
   encryptedSenderBalance: bigint
 ) {
-  const value = 10n;
+  const value = transferValue;
   const sender_rand_r = getRandomBigInt(senderKeys.publicKey.n);
   const receiver_rand_r = getRandomBigInt(receiverKeys.publicKey.n);
   const encryptedSenderValue = senderKeys.publicKey.encrypt(
