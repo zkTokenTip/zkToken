@@ -1,5 +1,7 @@
 # zkToken
 
+Token with hidden balances and transfer amounts.
+
 Uses homomorphic balance encryption (Paye cryptosystem), the balances of the recipient and sender are homomorphically added and subtracted in the smart contract with the transfer amount calculated on the sender's side. The proof of computation is sent to the smart contract.
 
 ## Technology stack
